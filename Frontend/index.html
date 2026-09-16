@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCM Frontend</title>
+    <style>
+        body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+        label { display: block; margin-top: 12px; font-size: 14px; color: #333; }
+        input, textarea { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+        button { margin-top: 16px; padding: 10px 16px; cursor: pointer; }
+        #status { margin-top: 16px; font-size: 14px; white-space: pre-wrap; }
+        hr { margin: 24px 0; }
+    </style>
+</head>
+<body>
+    <h3>FCM Testing</h3>
+
+    <section>
+        <h4>1. Register this device</h4>
+        <label>Channel / room
+            <input type="text" id="registerChannel" placeholder="default" />
+        </label>
+        <button onclick="registerToken()">Save Token</button>
+    </section>
+
+    <hr>
+
+    <section>
+        <h4>2. Send a broadcast</h4>
+        <label>Channel / room to send to
+            <input type="text" id="sendChannel" placeholder="default" />
+        </label>
+        <label>Title
+            <input type="text" id="sendTitle" placeholder="Hello" />
+        </label>
+        <label>Message
+            <textarea id="sendBody" placeholder="Sent from Go backend"></textarea>
+        </label>
+        <button onclick="sendNotification()">Send Notification</button>
+    </section>
+
+    <div id="status"></div>
+
+    <script type="module" src="firebase.js"></script>
+    <script>
+        // BACKEND_URL points at your deployed Go server on Render.
+        const BACKEND_URL = "https://firebase-notification-x6s8.onrender.com";
+
+        function setStatus(msg) {
+            document.getElementById("status").textContent = msg;
+        }
+
+        async function registerToken() {
+            try {
+                // getDeviceToken() is expected to come from firebase.js,
+                // which requests permission and returns the FCM token
+                // for this browser/device.
+                const token = await getDeviceToken();
+                const channel = document.getElementById("registerChannel").value || "default";
+
+                const res = await fetch(`${BACKEND_URL}/save-token`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token, channel })
+                });
+
+                const text = await res.text();
+                setStatus(text);
+            } catch (err) {
+                setStatus("Error registering token: " + err.message);
+            }
+        }
+
+        async function sendNotification() {
+            try {
+                const channel = document.getElementById("sendChannel").value || "default";
+                const title = document.getElementById("sendTitle").value;
+                const body = document.getElementById("sendBody").value;
+
+                const res = await fetch(`${BACKEND_URL}/send`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ channel, title, body })
+                });
+
+                const text = await res.text();
+                setStatus(text);
+            } catch (err) {
+                setStatus("Error sending notification: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
