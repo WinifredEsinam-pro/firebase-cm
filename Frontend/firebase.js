@@ -3,6 +3,7 @@ import { getMessaging, getToken, onMessage }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
 const firebaseConfig = {
+  apiKey: "AIzaSyBPL1fY-gLsgl5HzRAtpMfmi-XJR7Mh7XY",
   authDomain: "fir-b9eea.firebaseapp.com",
   projectId: "fir-b9eea",
   storageBucket: "fir-b9eea.firebasestorage.app",
