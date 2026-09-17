@@ -44,7 +44,6 @@
 
     <script type="module" src="firebase.js"></script>
     <script>
-        // BACKEND_URL points at your deployed Go server on Render.
         const BACKEND_URL = "https://firebase-cm.onrender.com";
 
         function setStatus(msg) {
@@ -53,9 +52,6 @@
 
         async function registerToken() {
             try {
-                // getDeviceToken() is expected to come from firebase.js,
-                // which requests permission and returns the FCM token
-                // for this browser/device.
                 const token = await getDeviceToken();
                 const channel = document.getElementById("registerChannel").value || "default";
 

@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getMessaging, getToken, onMessage } 
+import { getMessaging, getToken, onMessage }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -16,46 +16,24 @@ const messaging = getMessaging(app);
 
 navigator.serviceWorker.register("/firebase-messaging-sw.js");
 
-
-async function initFCM() {
+async function getDeviceToken() {
   const permission = await Notification.requestPermission();
 
-  if (permission === "granted") {
-    const token = await getToken(messaging, {
-      vapidKey: "BJ69xGibgyZ6UnXuDTNLSVZPlL08foCrLSzbXjrTyjEHdCU5xNfI_5Q10pAPtHpJxOKhI9UJ5md63C32Mx2yA08"
-    });
-
-    console.log("Token:", token);
-
-    // send token to backend
-    await fetch("/save-token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ token })
-    });
+  if (permission !== "granted") {
+    throw new Error("Notification permission was not granted");
   }
+
+  const token = await getToken(messaging, {
+    vapidKey: "BJ69xGibgyZ6UnXuDTNLSVZPlL08foCrLSzbXjrTyjEHdCU5xNfI_5Q10pAPtHpJxOKhI9UJ5md63C32Mx2yA08"
+  });
+
+  console.log("Token:", token);
+  return token;
 }
-
-initFCM();
-
 
 onMessage(messaging, (payload) => {
   console.log("Message received:", payload);
   alert(payload.notification.title + " - " + payload.notification.body);
 });
 
-function same() {
-  console.log("Same");
-}
-
-async function sendNotification() { 
-    await fetch("/send"); 
-};
-
-
-
-window.sendNotification = sendNotification; 
-
-window.same = same;
+window.getDeviceToken = getDeviceToken;
