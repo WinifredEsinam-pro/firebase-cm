@@ -19,6 +19,7 @@ import (
 
 var client *messaging.Client
 var collection *mongo.Collection
+var messagesCollection *mongo.Collection
 
 // TokenRequest now includes an optional Channel field.
 // If no channel is given, the token is registered under "default".
@@ -68,6 +69,7 @@ func initDB() {
 	}
 
 	collection = mongoClient.Database("fcm_db").Collection("tokens")
+	messagesCollection = mongoClient.Database("fcm_db").Collection("messages")
 }
 
 // saveToken now upserts by token, and stores which channel/room
@@ -189,15 +191,43 @@ func sendNotification(w http.ResponseWriter, r *http.Request) {
 		sent++
 	}
 
+	// Save a record of this broadcast so it can be viewed later
+	// on the dashboard, even though the message itself was
+	// already delivered and isn't stored anywhere else.
+	messagesCollection.InsertOne(context.Background(), bson.M{
+		"channel":   channel,
+		"title":     title,
+		"body":      body,
+		"sent":      sent,
+		"failed":    failed,
+		"timestamp": time.Now(),
+	})
+
 	fmt.Fprintf(w, "Sent to channel '%s': %d succeeded, %d failed\n", channel, sent, failed)
 }
 
 func main() {
 	initFirebase()
 	initDB()
+	initAuth()
 
+	// Devices register without needing to be logged in — anyone
+	// running the app should be able to receive notifications.
 	http.HandleFunc("/save-token", saveToken)
-	http.HandleFunc("/send", sendNotification)
+
+	// But only a logged-in user can trigger a broadcast. Wrapping
+	// sendNotification in requireAuth means the auth check runs
+	// first, and sendNotification only executes if it passes.
+	http.HandleFunc("/send", requireAuth(sendNotification))
+
+	// New auth routes
+	http.HandleFunc("/signup", signup)
+	http.HandleFunc("/login", login)
+
+	// Dashboard routes — also protected, since channel lists and
+	// send history are only meant for logged-in users to view.
+	http.HandleFunc("/channels", requireAuth(getChannels))
+	http.HandleFunc("/history", requireAuth(getHistory))
 
 	port := os.Getenv("PORT")
 	if port == "" {
