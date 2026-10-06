@@ -17,6 +17,20 @@
     <h3>FCM Testing</h3>
 
     <section>
+        <h4>0. Log in</h4>
+        <label>Email
+            <input type="email" id="loginEmail" placeholder="you@example.com" />
+        </label>
+        <label>Password
+            <input type="password" id="loginPassword" placeholder="password" />
+        </label>
+        <button onclick="login()">Log In</button>
+        <div id="loginStatus" style="margin-top: 8px; font-size: 13px;"></div>
+    </section>
+
+    <hr>
+
+    <section>
         <h4>1. Register this device</h4>
         <label>Channel / room
             <input type="text" id="registerChannel" placeholder="default" />
@@ -44,14 +58,52 @@
 
     <script type="module" src="firebase.js"></script>
     <script>
+        // BACKEND_URL points at your deployed Go server on Render.
         const BACKEND_URL = "https://firebase-cm.onrender.com";
 
         function setStatus(msg) {
             document.getElementById("status").textContent = msg;
         }
 
+        // Token is kept in memory only (not localStorage), so you'll
+        // need to log in again each time you reload the page. That's
+        // fine for testing — the React dashboard later can persist it.
+        let authToken = null;
+
+        async function login() {
+            const loginStatusEl = document.getElementById("loginStatus");
+            try {
+                const email = document.getElementById("loginEmail").value;
+                const password = document.getElementById("loginPassword").value;
+
+                const res = await fetch(`${BACKEND_URL}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    loginStatusEl.textContent = "Login failed: " + (data.error || JSON.stringify(data));
+                    loginStatusEl.style.color = "#b00";
+                    return;
+                }
+
+                authToken = data.token;
+                loginStatusEl.textContent = "Logged in. You can now send notifications.";
+                loginStatusEl.style.color = "#080";
+            } catch (err) {
+                loginStatusEl.textContent = "Error logging in: " + err.message;
+                loginStatusEl.style.color = "#b00";
+            }
+        }
+
         async function registerToken() {
             try {
+                // getDeviceToken() is expected to come from firebase.js,
+                // which requests permission and returns the FCM token
+                // for this browser/device.
                 const token = await getDeviceToken();
                 const channel = document.getElementById("registerChannel").value || "default";
 
@@ -70,13 +122,21 @@
 
         async function sendNotification() {
             try {
+                if (!authToken) {
+                    setStatus("You need to log in first (section 0) before sending.");
+                    return;
+                }
+
                 const channel = document.getElementById("sendChannel").value || "default";
                 const title = document.getElementById("sendTitle").value;
                 const body = document.getElementById("sendBody").value;
 
                 const res = await fetch(`${BACKEND_URL}/send`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${authToken}`
+                    },
                     body: JSON.stringify({ channel, title, body })
                 });
 
